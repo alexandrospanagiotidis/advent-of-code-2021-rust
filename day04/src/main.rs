@@ -1,4 +1,4 @@
-use std::collections::{VecDeque};
+use std::collections::VecDeque;
 use std::io::{BufRead, stdin};
 
 #[derive(Debug)]
@@ -99,11 +99,6 @@ impl BingoBoard {
     fn get_index(&self, row: usize, column: usize) -> usize {
         row * self.width + column
     }
-
-    // fn entries_with<P>(&self, predicate: P) -> Filter<std::slice::Iter<'_, BingoBoardEntry>, P>
-    //     where P: FnMut(&BingoBoardEntry) -> bool {
-    //     self.entries.iter().filter(predicate)
-    // }
 }
 
 fn main() {
@@ -135,28 +130,48 @@ fn main() {
 
     // println!("#boards={0:?}", boards.len());
 
+    let mut winning_boards: Vec<(BingoBoard, u32)> = Vec::new();
+    winning_boards.reserve_exact(boards.len());
+
     while !drawn_numbers.is_empty() {
         let drawn_number = drawn_numbers.pop_front()
             .expect("Could not get next drawn number");
 
         // println!("drawn_number={0:?}", drawn_number);
 
-        for board in &mut boards {
+        let mut index = 0;
+        while index < boards.len() {
+            let board = &mut boards[index];
             board.mark(drawn_number);
 
             if board.is_bingo() {
-                let unmarked: Vec<u32> = board.entries.iter()
-                    .filter(|entry| entry.marked == false)
-                    .map(|entry| entry.value)
-                    .collect();
-
-                let sum: u32 = unmarked.iter().sum();
-
-                println!("unmarked={0:?} sum={1:?} * drawn_number={2:?} = {3:?}", unmarked, sum, drawn_number, sum * drawn_number);
-                return;
+                let board = boards.remove(index);
+                winning_boards.push((board, drawn_number));
             } else {
-                // println!("board={0:?}", board);
+                index += 1;
             }
         }
     }
+
+    let board = winning_boards.first().unwrap();
+    let result = determine_result(&board.0, board.1);
+    println!("part1: result={0:?}", result);
+
+    let board = winning_boards.last().unwrap();
+    let result = determine_result(&board.0, board.1);
+    println!("part2: result={0:?}", result);
+}
+
+fn determine_result(board: &BingoBoard, drawn_number: u32) -> u32 {
+    let unmarked: Vec<u32> = board.entries.iter()
+        .filter(|entry| entry.marked == false)
+        .map(|entry| entry.value)
+        .collect();
+
+    let sum: u32 = unmarked.iter().sum();
+    let result = sum * drawn_number;
+
+    // println!("unmarked={0:?} sum={1:?} * drawn_number={2:?} = {3:?}", unmarked, sum, drawn_number, result);
+
+    result
 }

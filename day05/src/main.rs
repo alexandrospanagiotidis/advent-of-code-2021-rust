@@ -1,5 +1,6 @@
 use std::collections::{HashMap, VecDeque};
 use std::io::{BufRead, stdin};
+use std::ops::RangeInclusive;
 
 #[derive(Debug)]
 struct Line {
@@ -43,20 +44,12 @@ impl Line {
             .unwrap()
     }
 
-    fn left(&self) -> i32 {
-        self.x1.min(self.x2)
+    fn is_horizontal(&self) -> bool {
+        self.x1 == self.x2
     }
 
-    fn right(&self) -> i32 {
-        self.x1.max(self.x2)
-    }
-
-    fn top(&self) -> i32 {
-        self.y1.min(self.y2)
-    }
-
-    fn bottom(&self) -> i32 {
-        self.y1.max(self.y2)
+    fn is_vertical(&self) -> bool {
+        self.y1 == self.y2
     }
 }
 
@@ -78,11 +71,19 @@ impl Bounds {
         }
     }
 
-    fn grow_to_contain(&mut self, line: &Line) {
-        self.left = self.left.min(line.left());
-        self.top = self.top.min(line.y1.min(line.y2));
-        self.right = self.right.max(line.right());
-        self.bottom = self.bottom.max(line.y1.max(line.y2));
+    fn width(&self) -> RangeInclusive<usize> {
+        RangeInclusive::new(0, (self.right - self.left) as usize)
+    }
+
+    fn height(&self) -> RangeInclusive<usize> {
+        RangeInclusive::new(0, (self.bottom - self.top) as usize)
+    }
+
+    fn grow_to_contain(&mut self, x: i32, y: i32) {
+        self.left = self.left.min(x);
+        self.top = self.top.min(y);
+        self.right = self.right.max(x);
+        self.bottom = self.bottom.max(y);
     }
 }
 
@@ -90,22 +91,24 @@ type GridKey = (i32, i32);
 
 #[derive(Debug)]
 struct Grid {
-    width: usize,
-    height: usize,
     crossings: HashMap<GridKey, i32>,
 }
 
 impl Grid {
-    fn new(bounds: &Bounds) -> Self {
+    fn new() -> Self {
         Self {
-            width: (bounds.right - bounds.left + 1) as usize,
-            height: (bounds.bottom - bounds.top + 1) as usize,
             crossings: HashMap::new(),
         }
     }
 
+    fn count_of_at_least_crossings(&self, min_crossings: i32) -> usize {
+        self.crossings.iter()
+            .filter(|(_, &count)| count >= min_crossings)
+            .count()
+    }
+
     fn increment_at(&mut self, x: i32, y: i32) {
-        println!("incrementing at ({0:?}, {1:?})", x, y);
+        // println!("incrementing at ({0:?}, {1:?})", x, y);
         *self.crossings.entry((x, y)).or_insert(0) += 1
     }
 
@@ -144,24 +147,34 @@ impl Grid {
         }
     }
 
-    fn scan_horizontal(&mut self, y: i32, left: i32, right: i32) {
+    fn scan_horizontal(&mut self, y: i32, x1: i32, x2: i32) {
+        let (left, right) = if x1 < x2 { (x1, x2) } else { (x2, x1) };
         // println!("horizontal: y={0:?} left={1:?} right={2:?}", y, left, right);
+
         for column in left..=right {
             self.increment_at(column, y);
         }
     }
 
-    fn scan_vertical(&mut self, x: i32, top: i32, bottom: i32) {
+    fn scan_vertical(&mut self, x: i32, y1: i32, y2: i32) {
+        let (top, bottom) = if y1 < y2 { (y1, y2) } else { (y2, y1) };
         // println!("vertical: x={0:?} top={1:?} bottom={2:?}", x, top, bottom);
+
         for row in top..=bottom {
             self.increment_at(x, row);
         }
     }
 
     fn draw(&self) {
+        let mut bounds = Bounds::new();
+
+        for coordinate in self.crossings.keys() {
+            bounds.grow_to_contain(coordinate.0, coordinate.1);
+        }
+
         // println!("grid={0:?}", self);
-        for row in 0..self.width {
-            for column in 0..self.height {
+        for row in bounds.width() {
+            for column in bounds.height() {
                 let key: GridKey = (column as i32, row as i32);
                 if let Some(count) = self.crossings.get(&key) {
                     print!("{0}", count);
@@ -182,47 +195,36 @@ fn main() {
 
     // println!("lines={0:?}", lines);
 
-    let mut bounds = Bounds::new();
-
-    for line in &lines {
-        bounds.grow_to_contain(line);
-    }
-
-    // println!("bounds={0:?}", bounds);
-
     {
-        let mut grid = Grid::new(&bounds);
+        let mut grid = Grid::new();
 
         for line in &lines {
-            if line.left() == line.right() {
-                grid.scan_vertical(line.left(), line.top(), line.bottom());
-            }
-            if line.top() == line.bottom() {
-                grid.scan_horizontal(line.top(), line.left(), line.right());
+            if line.is_horizontal() {
+                grid.scan_vertical(line.x1, line.y1, line.y2);
+            } else if line.is_vertical() {
+                grid.scan_horizontal(line.y1, line.x1, line.x2);
             }
         }
 
-        // println!("grid={0:?}", grid);
+        // grid.draw();
 
-        let at_least_crossings_count = grid.crossings.iter()
-            .filter(|(_, &count)| count >= 2)
-            .count();
+        let at_least_two_crossings = grid.count_of_at_least_crossings(2);
 
-        println!("part1: result={0:?}", at_least_crossings_count);
+        println!("part1: result={0:?}", at_least_two_crossings);
+        assert_eq!(at_least_two_crossings, 8111);
     }
     {
-        let mut grid = Grid::new(&bounds);
+        let mut grid = Grid::new();
 
         for line in &lines {
-            println!("scanning line={0:?}", line);
             grid.bresenham(line);
         }
 
-        let at_least_crossings_count = grid.crossings.iter()
-            .filter(|(_, &count)| count >= 2)
-            .count();
+        // grid.draw();
 
-        grid.draw();
-        println!("part2: result={0:?}", at_least_crossings_count);
+        let at_least_two_crossings = grid.count_of_at_least_crossings(2);
+
+        println!("part2: result={0:?}", at_least_two_crossings);
+        assert_eq!(at_least_two_crossings, 22088);
     }
 }

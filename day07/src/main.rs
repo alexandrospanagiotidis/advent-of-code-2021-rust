@@ -1,4 +1,3 @@
-use std::collections::{BTreeMap};
 use std::io::{BufRead, stdin};
 
 fn main() {
@@ -15,27 +14,35 @@ fn main() {
 
     // println!("positions:{0:?}", positions);
 
-    let same_heights = positions.iter()
-        .fold(BTreeMap::new(), |mut acc, height| {
-            *acc.entry(height).or_insert(0) += 1;
-            acc
-        });
+    let (target_height, global_difference) = determine_global_optimum(&positions, |lhs, rhs| (lhs - rhs).abs());
+    println!("part1: target_height={0:?} result={1:?}", target_height, global_difference);
+    assert_eq!(global_difference, 355764);
 
-    // println!("same_heights:{0:?}", same_heights);
+    let (target_height, global_difference) = determine_global_optimum(&positions, |lhs, rhs| {
+        let upper_bound = (lhs - rhs).abs();
+        (upper_bound * (upper_bound + 1)) / 2
+    });
+    println!("part2: target_height={0:?} result={1:?}", target_height, global_difference);
+    assert_eq!(global_difference, 99634572);
+}
 
+fn determine_global_optimum(positions: &Vec<i32>, optim_fn: impl Fn(&i32, &i32) -> i32) -> (i32, i32) {
     let mut target_height = -1;
     let mut global_difference = i32::MAX;
 
-    for &current_height in same_heights.keys().rev() {
+    let lower_bound = positions.iter().min().unwrap().clone();
+    let upper_bound = positions.iter().max().unwrap().clone();
+
+    for current_height in lower_bound..=upper_bound {
         let current_difference = positions.iter()
-            .map(|position| (position - current_height).abs())
+            .map(|position| optim_fn(&position, &current_height))
             .sum();
 
         if current_difference < global_difference {
             global_difference = current_difference;
-            target_height = current_height.to_owned();
+            target_height = current_height;
         }
     }
 
-    println!("part1: target_height={0:?} result={1:?}", target_height, global_difference);
+    (target_height, global_difference)
 }

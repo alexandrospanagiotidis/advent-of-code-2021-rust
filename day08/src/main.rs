@@ -1,11 +1,9 @@
-use std::collections::{HashMap};
+use std::collections::{BTreeSet, HashMap};
 use std::io::{BufRead, stdin};
-
-use itertools::Itertools;
 
 #[derive(Debug)]
 struct SevenSegmentDisplay {
-    digits: HashMap<i32, String>,
+    digits: HashMap<i32, BTreeSet<char>>,
     output: Vec<i32>,
 }
 
@@ -16,20 +14,29 @@ impl SevenSegmentDisplay {
         let display_digits = input_output.next().expect("Could not determine display digits");
         let mut digits = HashMap::new();
 
+        let mut len_5 = BTreeSet::new();
+        let mut len_6 = BTreeSet::new();
+
         for display_digit in display_digits.split(' ') {
             // println!("display_digit={0:?}", display_digit);
             match display_digit.len() {
                 2 => {
-                    digits.insert(1, Self::sort_string(display_digit));
-                }
-                4 => {
-                    digits.insert(4, Self::sort_string(display_digit));
+                    digits.insert(1, BTreeSet::from_iter(display_digit.chars()));
                 }
                 3 => {
-                    digits.insert(7, Self::sort_string(display_digit));
+                    digits.insert(7, BTreeSet::from_iter(display_digit.chars()));
+                }
+                4 => {
+                    digits.insert(4, BTreeSet::from_iter(display_digit.chars()));
+                }
+                5 => {
+                    len_5.insert(display_digit);
+                }
+                6 => {
+                    len_6.insert(display_digit);
                 }
                 7 => {
-                    digits.insert(8, Self::sort_string(display_digit));
+                    digits.insert(8, BTreeSet::from_iter(display_digit.chars()));
                 }
                 _ => (),
             }
@@ -39,11 +46,10 @@ impl SevenSegmentDisplay {
         let mut output = Vec::new();
 
         for output_digit in output_digits.split(' ') {
-            let output_digit = Self::sort_string(output_digit);
             // println!("output_digit={0:?}", output_digit);
 
             let output_digit = digits.iter()
-                .filter(|&(_digit, segments)| *segments == output_digit)
+                .filter(|&(_digit, segments)| *segments== BTreeSet::from_iter(output_digit.chars()))
                 .nth(0);
 
             match output_digit {
@@ -56,11 +62,6 @@ impl SevenSegmentDisplay {
             digits,
             output,
         }
-    }
-
-    #[inline]
-    fn sort_string(input: &str) -> String {
-        input.chars().sorted().collect::<String>()
     }
 }
 

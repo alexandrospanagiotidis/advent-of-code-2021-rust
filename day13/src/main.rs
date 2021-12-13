@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::collections::{HashSet, VecDeque};
 use std::io::{BufRead, stdin};
 
@@ -9,12 +10,18 @@ fn main() {
     let mut day13 = Day13::parse_input(lines);
     // println!("day13={0:?}", day13);
 
-    let folds: VecDeque<Fold> = day13.folds.iter().map(|x| x.clone()).collect();
+    let mut folds: VecDeque<Fold> = day13.folds.iter().map(|x| x.clone()).collect();
 
-    folds.front()
-        .map(|fold| day13.fold_once(fold));
-    day13.grid.print();
+    folds.pop_front()
+        .map(|fold| day13.fold_once(fold.borrow()));
+    // day13.grid.print();
     println!("part1: #dots={0:?}", day13.grid.dots.len());
+
+    for fold in folds {
+        day13.fold_once(fold.borrow());
+    }
+    println!("part2:");
+    day13.grid.print();
 }
 
 #[derive(Debug)]
@@ -91,6 +98,7 @@ impl Day13 {
     }
 
     fn fold_up(&mut self, value: u32) {
+        // println!("Folding up at {0:?}", value);
         let mut new_grid = Grid::new();
 
         for &(x, y) in self.grid.dots.iter().filter(|&(_x, y)| y < &value) {
@@ -99,7 +107,7 @@ impl Day13 {
 
         for &(x, y) in self.grid.dots.iter().filter(|&(_x, y)| y >= &value) {
             let new_y = self.grid.height as i32 - 1 - y as i32;
-            println!("Folding {0:?} by dy={1:?} up to {2:?}", (x, y), value, new_y);
+            // println!("Folding {0:?} by dy={1:?} up to {2:?}", (x, y), value, new_y);
             if new_y >= 0 {
                 new_grid.add(x, new_y as u32);
             } else {
@@ -114,6 +122,7 @@ impl Day13 {
     }
 
     fn fold_left(&mut self, value: u32) {
+        // println!("Folding left at {0:?}", value);
         let mut new_grid = Grid::new();
 
         for &(x, y) in self.grid.dots.iter().filter(|&(x, _y)| x < &value) {
@@ -122,7 +131,7 @@ impl Day13 {
 
         for &(x, y) in self.grid.dots.iter().filter(|&(x, _y)| x >= &value) {
             let new_x = self.grid.width as i32 - 1 - x as i32;
-            println!("Folding {0:?} by dx={1:?} up to {2:?}", (x, y), value, new_x);
+            // println!("Folding {0:?} by dx={1:?} up to {2:?}", (x, y), value, new_x);
             if new_x >= 0 {
                 new_grid.add(new_x as u32, y);
             } else {

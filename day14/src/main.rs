@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap};
 use std::io::{BufRead, stdin};
 
 fn main() {
@@ -10,8 +10,7 @@ fn main() {
 
     let polymer_template = lines.next()
         .expect("Could not read polymer template");
-
-    println!("polymer_template={0:?}", polymer_template);
+    // println!("polymer_template={0:?}", polymer_template);
 
     // Skip empty line
     lines.next();
@@ -28,23 +27,56 @@ fn main() {
 
         rules.insert(input, output);
     }
-
-    println!("rules={0:?}", rules);
+    // println!("rules={0:?}", rules);
 
     let result = process_polymer(polymer_template, &mut rules, 10);
     println!("part1: result={0:?}", result);
+    assert_eq!(result, 2068);
+
+    let result = process_polymer(polymer_template, &mut rules, 40);
+    println!("part2: result={0:?}", result);
+    assert_eq!(result, 2158894777814);
 }
 
 fn process_polymer(polymer_template: &String, rules: &mut HashMap<&str, &str>, steps: i32) -> usize {
-    let mut polymer = polymer_template.clone();
+    let mut pair_count: HashMap<String, usize> = HashMap::new();
+    let mut element_count: HashMap<String, usize> = HashMap::new();
+
+    // Seed initial production
+    for i in 0..=polymer_template.len() - 2 {
+        let pair = &polymer_template[i..i + 2];
+
+        *element_count.entry(pair[0..1].to_string()).or_insert(0) += 1;
+        *element_count.entry(pair[1..2].to_string()).or_insert(0) += 1;
+
+        let token = pair.to_string();
+        *pair_count.entry(token).or_insert(0) += 1;
+    }
 
     for _i in 0..steps {
-        polymer = step(&polymer, &rules);
-    }
-    // println!("polymer={0:?}", polymer);
+        // println!("iteration={0:?}", i);
+        // println!("pair_count={0:?}", pair_count);
+        // println!("element_count={0:?}", element_count);
 
-    let element_count = count_elements(&polymer);
-    // println!("element_count={0:?}", element_count);
+        let mut this_iteration: HashMap<String, usize> = HashMap::new();
+
+        for (pair, count) in pair_count.iter() {
+            let rule_output = rules.get(pair.as_str())
+                .expect(format!("Could not find rule: {0:?}", pair).as_str());
+
+            let rule_output = rule_output.to_string();
+
+            let left = [&pair[0..1], &rule_output].join("");
+            *this_iteration.entry(left).or_insert(0) += count;
+
+            let right = [&rule_output, &pair[1..2]].join("");
+            *this_iteration.entry(right).or_insert(0) += count;
+
+            *element_count.entry(rule_output).or_insert(0) += count;
+        }
+
+        pair_count = this_iteration;
+    }
 
     let least_occurring_element = element_count.iter().min_by(|lhs, rhs| lhs.1.cmp(&rhs.1))
         .expect("Could not determine least_occurring_element");
@@ -55,31 +87,4 @@ fn process_polymer(polymer_template: &String, rules: &mut HashMap<&str, &str>, s
     // println!("most_occurring_element={0:?}", most_occurring_element);
 
     most_occurring_element.1 - least_occurring_element.1
-}
-
-fn step(polymer: &str, rules: &HashMap<&str, &str>) -> String {
-    let mut output = VecDeque::new();
-
-    for i in 0..=polymer.len() - 2 {
-        let input = &polymer[i..i + 2];
-
-        if let Some(reaction) = rules.get(input) {
-            output.pop_back();
-            output.push_back(input[0..1].to_owned());
-            output.push_back(reaction.to_string());
-            output.push_back(input[1..2].to_owned());
-        } else {
-            output.push_back(input.to_owned());
-        }
-    }
-
-    output.into_iter().collect::<String>()
-}
-
-fn count_elements(polymer: &str) -> HashMap<char, usize> {
-    polymer.chars()
-        .fold(HashMap::new(), |mut acc, c| {
-            *acc.entry(c).or_insert(0) += 1;
-            acc
-        })
 }

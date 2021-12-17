@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::ops::RangeInclusive;
 
 fn main() {
@@ -6,6 +7,8 @@ fn main() {
 
     let mut max_height = None;
 
+    let mut velocities = HashSet::new();
+
     for y_velocity in -100..1000 {
         for x_velocity in 1..1000 {
             let result = shoot(x_velocity, y_velocity, &horizontal, &vertical);
@@ -13,6 +16,8 @@ fn main() {
             if result.is_none() {
                 continue;
             }
+
+            velocities.insert((x_velocity, y_velocity));
 
             max_height = result
                 .map(|max_y|
@@ -25,6 +30,7 @@ fn main() {
     }
 
     println!("part1: max_height={0:?}", max_height);
+    println!("part2: velocities={0:?}", velocities.len());
 }
 
 fn shoot(x_velocity: i32, y_velocity: i32, horizontal: &RangeInclusive<i32>, vertical: &RangeInclusive<i32>) -> Option<i32> {
